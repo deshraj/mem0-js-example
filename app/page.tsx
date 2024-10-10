@@ -1,101 +1,169 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import { useState, useEffect } from "react"
+import { MemoryClient } from "mem0ai";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Loader2, Search, Settings } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+
+interface Memory {
+  id: string;
+  memory: string;
+  user_id: string;
+  hash: string;
+  metadata: null;
+  categories: string[];
+  created_at: string;
+  updated_at: string;
+  custom_categories: string[] | null;
+}
+
+export default function MemoryDashboard() {
+  const [apiKey, setApiKey] = useState<string>("")
+  const [userId, setUserId] = useState<string>("")
+  const [memories, setMemories] = useState<Memory[]>([])
+  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState<string>("")
+
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem("memoryApiKey")
+    const savedUserId = localStorage.getItem("memoryUserId")
+    if (savedApiKey) setApiKey(savedApiKey)
+    if (savedUserId) setUserId(savedUserId)
+  }, [])
+
+  const fetchMemories = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const client = new MemoryClient(apiKey);
+      const fetchedMemories = await client.getAll({ user_id: userId });
+      setMemories(fetchedMemories);
+      localStorage.setItem("memoryApiKey", apiKey)
+      localStorage.setItem("memoryUserId", userId)
+    } catch (err) {
+      setError('Failed to fetch memories. Please check your API key and user ID.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const filteredMemories = memories.filter(memory => 
+    memory.memory.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    memory.categories.some(category => category.toLowerCase().includes(searchTerm.toLowerCase()))
+  )
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Memory Dashboard</h1>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <Settings className="mr-2 h-4 w-4" />
+              API Settings
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>API Settings</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="apiKey" className="text-right">API Key</label>
+                <Input
+                  id="apiKey"
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <label htmlFor="userId" className="text-right">User ID</label>
+                <Input
+                  id="userId"
+                  value={userId}
+                  onChange={(e) => setUserId(e.target.value)}
+                  className="col-span-3"
+                />
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <div className="flex space-x-2 mb-6">
+        <div className="relative flex-grow">
+          <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 transform text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search memories..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <Button onClick={fetchMemories} disabled={isLoading}>
+          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Fetch Memories'}
+        </Button>
+      </div>
+
+      {error && (
+        <Card className="mb-6">
+          <CardContent className="pt-6 text-destructive">{error}</CardContent>
+        </Card>
+      )}
+
+      <Tabs defaultValue="timeline" className="mb-6">
+        <TabsList>
+          <TabsTrigger value="timeline">Timeline</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+        </TabsList>
+        <TabsContent value="timeline">
+          <ScrollArea className="h-[calc(100vh-300px)]">
+            {filteredMemories.map((memory) => (
+              <Card key={memory.id} className="mb-4">
+                <CardHeader>
+                  <CardTitle className="text-base font-normal">{memory.memory}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {memory.categories.map((category, index) => (
+                      <Badge key={index} variant="secondary">{category}</Badge>
+                    ))}
+                    {memory.custom_categories?.map((category, index) => (
+                      <Badge key={index} variant="outline">{category}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </ScrollArea>
+        </TabsContent>
+        <TabsContent value="categories">
+          <Card>
+            <CardHeader>
+              <CardTitle>Categories</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p>Categories view coming soon...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
-  );
+  )
 }
