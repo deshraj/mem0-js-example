@@ -19,3 +19,7 @@ import { MemoryClient } from "mem0ai";
 
 const client = new MemoryClient("your-api-key");
 ```
+
+### Screenshot
+
+![Mem0 Dashboard](./screenshot.png)
